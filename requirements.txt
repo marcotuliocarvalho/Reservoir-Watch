@@ -1,0 +1,10 @@
+duckdb
+python-dotenv
+numpy
+pandas
+requests
+matplotlib
+tabulate
+polars
+dash
+plotly
