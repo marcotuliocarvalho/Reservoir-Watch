@@ -1,5 +1,7 @@
-# Local Airflow (standalone: scheduler + api-server + dag-processor + triggerer, SQLite).
-# Run: mkdir -p data && docker compose up --build   UI: http://localhost:8080
+# Full stack: Airflow (ingestion) + Dash dashboard.
+# Run: mkdir -p data && docker compose up --build
+#   Airflow UI: http://localhost:8080   Dashboard: http://localhost:8050
+# Airflow runs standalone (scheduler + api-server + dag-processor + triggerer, SQLite).
 # DAG: dags/hidrico_ingestion.py -> src/ingestion/pipeline.py (build_dag).
 # Output: data/reservatorios_hidrologicos.parquet (raw yearly files in data/raw/).
 services:
@@ -31,6 +33,25 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    restart: unless-stopped
+    depends_on:
+      airflow:
+        condition: service_started
+    ports:
+      - "8050:8050"
+    volumes:
+      - ./data:/data:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8050/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
 volumes:
   airflow-state:

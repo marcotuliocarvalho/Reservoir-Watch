@@ -1,0 +1,26 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HIDRIC_DATA_DIR=/data \
+    HIDRIC_REGISTRY=/app/registry/reservatorios.parquet
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ONS reservoir registry (coordinates, states, capacity). Not versioned in git.
+RUN mkdir -p /app/registry \
+    && python -c "import urllib.request; urllib.request.urlretrieve('https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/reservatorio/RESERVATORIOS.parquet', '/app/registry/reservatorios.parquet')" \
+    && chmod -R a+rX /app/registry
+
+COPY src ./src
+
+RUN useradd --create-home --uid 1000 dash
+USER dash
+
+EXPOSE 8050
+
+# The dataset is written by the Airflow DAG. Wait for the first run to finish.
+CMD ["sh", "-c", "until [ -f \"$HIDRIC_DATA_DIR/reservatorios_hidrologicos.parquet\" ]; do echo 'Waiting for the hidrico_ingestion DAG to write the dataset...'; sleep 30; done; exec python -m src.visualization --host 0.0.0.0 --port 8050"]
