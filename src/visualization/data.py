@@ -39,6 +39,7 @@ METRICS = {
 }
 
 FLOW_COLUMNS = {"vazao_afluente": "Inflow", "vazao_defluente": "Outflow"}
+MEASUREMENTS = ["volume_util", "nivel_norm", *FLOW_COLUMNS]
 
 TYPE_LABELS = {
     "RCU": "Reservoir with power plant",
@@ -169,7 +170,9 @@ def prepare(data: pl.LazyFrame) -> pl.LazyFrame:
 
     Raw ONS files go through the ingestion pipeline first. Useful volume
     readings outside [-10, 110] are treated as sensor errors and dropped; the
-    rest is clipped to [0, 100].
+    rest is clipped to [0, 100]. Rows without any measurement are dropped:
+    ONS publishes placeholder rows for the current day before the readings
+    arrive, and they would show the last day as empty.
     """
     if "capacity" not in data.collect_schema().names():
         data = pipeline.process(data, IngestionConfig())
@@ -187,7 +190,7 @@ def prepare(data: pl.LazyFrame) -> pl.LazyFrame:
         (pl.col("normalized_val_nivelmontante") * 100).alias("nivel_norm"),
         pl.col("val_vazaoafluente").alias("vazao_afluente"),
         pl.col("val_vazaodefluente").alias("vazao_defluente"),
-    )
+    ).filter(pl.any_horizontal(pl.col(c).is_not_null() for c in MEASUREMENTS))
 
 
 # Columns of a dataset written by ``export_dataset``: already prepared and

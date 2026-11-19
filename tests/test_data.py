@@ -57,6 +57,23 @@ def test_prepare_runs_pipeline_on_raw_files_and_cleans_volume(raw_frame):
     assert result["nivel_norm"].max() == pytest.approx(100.0)
 
 
+def test_prepare_drops_rows_without_measurements(raw_frame):
+    # ONS publishes the current day with ids and timestamps but no readings.
+    last_day = raw_frame.filter(pl.col("din_instante") == pl.col("din_instante").max())
+    placeholder = last_day.with_columns(
+        pl.col("din_instante") + pl.duration(days=1),
+        *(pl.lit(None, dtype=pl.Float64).alias(c) for c in (
+            "val_nivelmontante", "val_volumeutilcon", "val_vazaoafluente", "val_vazaodefluente",
+        )),
+    )
+
+    result = data.prepare(pl.concat([raw_frame, placeholder], how="vertical_relaxed").lazy()).collect()
+
+    assert result.height == raw_frame.height
+    assert result["data"].max() == LAST_DAY
+    assert data.summarize(result, "volume_util").inflow == 5000.0
+
+
 def test_attach_registry_matches_by_id_then_name(dashboard_df):
     info = dashboard_df.unique("id_reservatorio").select("id_reservatorio", "uf", "regiao", "rio", "capacidade_hm3")
     rows = {row["id_reservatorio"]: row for row in info.iter_rows(named=True)}
