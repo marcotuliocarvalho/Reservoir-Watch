@@ -1,0 +1,12 @@
+# Render Blueprint for the online demo. See deploy/render/Dockerfile.
+# Create it once at https://dashboard.render.com/blueprints (New Blueprint
+# Instance > this repository). Deploys run after the GitHub checks pass.
+services:
+  - type: web
+    name: reservoir-watch
+    runtime: docker
+    plan: free
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    autoDeployTrigger: checksPass
