@@ -32,7 +32,7 @@ ONS CKAN API ──> discover ──> download (1 task per year) ──> clean +
 | `Dockerfile` | Airflow image |
 | `Dockerfile.dashboard` | Dashboard image (bundles the reservoir registry) |
 | `docker-compose.yaml` | Full stack: `airflow` and `dashboard` services |
-| `deploy/huggingface/` | Self-contained demo image for Hugging Face Spaces |
+| `deploy/render/`, `render.yaml` | Self-contained demo image and Render Blueprint |
 | `tests/` | Unit and smoke tests (pytest) |
 | `.github/workflows/` | CI (lint, tests, DAG, Docker builds) and demo deploy |
 
@@ -118,6 +118,7 @@ To ingest only some years, trigger the DAG with the `years` param, for example `
 python -m src.ingestion                    # all years, preview only
 python -m src.ingestion 2024 2025          # some years, preview only
 python -m src.ingestion --write            # download and write the dataset
+python -m src.ingestion --write --since 2020  # only 2020 up to now
 ```
 
 Without `--write`, the pipeline runs in memory and prints a preview. With
@@ -130,6 +131,7 @@ Without `--write`, the pipeline runs in memory and prints a preview. With
 python -m src.visualization                          # reads HIDRIC_DATA_DIR, then ./data
 python -m src.visualization --source "data/raw/*.parquet"
 python -m src.visualization --port 8050 --debug
+python -m src.visualization --export dashboard.parquet  # prepared dataset, no server
 ```
 
 Open http://127.0.0.1:8050. `--source` takes a file, a directory or a glob
@@ -153,24 +155,29 @@ GitHub Actions runs on every push and pull request:
 
 - `ci.yml`: lint (ruff), tests with coverage, Airflow DAG import, and build of
   both Docker images.
-- `deploy-demo.yml`: after CI passes on `main`, pushes the dashboard to a
-  [Hugging Face Space](https://huggingface.co/docs/hub/spaces-sdks-docker)
-  (free CPU tier, 16 GB RAM). It also runs daily to rebuild the Space with
-  fresh ONS data.
+- `deploy-demo.yml`: rebuilds the online demo every day, so it shows fresh
+  ONS data.
 
-The demo image (`deploy/huggingface/Dockerfile`) does not use Airflow: it runs
-`python -m src.ingestion --write` at build time and serves the dashboard with
-gunicorn. To enable the deploy, once:
+The demo runs on the [Render](https://render.com) free tier (512 MB RAM). Its
+image (`deploy/render/Dockerfile`) does not use Airflow. At build time it
+ingests only the years since 2020 (`python -m src.ingestion --write --since
+2020`) and keeps just the prepared dashboard dataset
+(`python -m src.visualization --export`). The server then uses about 280 MB.
+In the demo, the normalized level uses the highest level since 2020, not
+the full history.
 
-1. Create a Hugging Face account and a token with write access at
-   <https://huggingface.co/settings/tokens>.
-2. In the GitHub repository, open Settings > Secrets and variables > Actions.
-   Add the secret `HF_TOKEN` (the token) and the variable `HF_SPACE`
-   (`<hf-user>/reservoir-watch`).
-3. Run the "Deploy demo" workflow, or push to `main`. The Space is created on
-   the first run. The first build takes about 5 minutes.
+To set it up, once:
 
-Free Spaces sleep after 48 hours without visits and wake up on the next visit.
+1. On Render, open New > Blueprint and select this repository. Render reads
+   `render.yaml` and creates the `reservoir-watch` web service. Later deploys
+   run when the GitHub checks pass on `main`.
+2. For the daily refresh, create an API key in Render (Account settings > API
+   Keys). In GitHub, open Settings > Secrets and variables > Actions. Add the
+   secret `RENDER_API_KEY` and the variable `RENDER_SERVICE_ID` (the `srv-...`
+   id in the service URL).
+
+Free Render services sleep after 15 minutes without visits. The next visit
+wakes the service up in about a minute.
 
 ## Configuration
 
