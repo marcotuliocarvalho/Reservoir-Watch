@@ -1,0 +1,21 @@
+[project]
+name = "reservoir-watch"
+version = "0.1.0"
+description = "Ingestion pipeline and dashboard for Brazil's SIN reservoirs (ONS open data)"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = [
+    "ignore::DeprecationWarning:dash.*",
+    "ignore::pytest.PytestRemovedIn10Warning",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]  # long Dash layout lines read better unwrapped

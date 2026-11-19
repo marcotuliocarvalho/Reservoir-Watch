@@ -11,3 +11,9 @@ data/
 
 # Arquivos de dados
 *.parquet
+
+# Tests and lint
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/

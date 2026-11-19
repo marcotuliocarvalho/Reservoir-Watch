@@ -9,6 +9,7 @@ from the state in the ONS registry (CEG code), not from this table.
 
 import json
 from functools import lru_cache
+from itertools import pairwise
 from pathlib import Path
 
 GEOJSON_PATH = Path(__file__).parent / "static" / "brasil_uf.geojson"
@@ -52,7 +53,7 @@ GROUP_INDEX = {"regiao": 1, "subsistema": 2}
 
 
 def _signed_area(ring: list) -> float:
-    return sum(x0 * y1 - x1 * y0 for (x0, y0, *_), (x1, y1, *_) in zip(ring, ring[1:]))
+    return sum(x0 * y1 - x1 * y0 for (x0, y0, *_), (x1, y1, *_) in pairwise(ring))
 
 
 def _orient(ring: list, clockwise: bool) -> list:

@@ -7,9 +7,21 @@ from dash import ALL, ClientsideFunction, Dash, Input, Output, State, ctx, html,
 
 from . import charts, geo
 from .data import (
-    ALERT_BELOW, CRITICAL_BELOW, FAST_DROP, GROUPS, METRICS, Filters, alerts, apply_filters,
-    daily_by_group, daily_flows, group_summary, latest_by_reservoir, options,
-    reservoir_history, summarize,
+    ALERT_BELOW,
+    CRITICAL_BELOW,
+    FAST_DROP,
+    GROUPS,
+    METRICS,
+    Filters,
+    alerts,
+    apply_filters,
+    daily_by_group,
+    daily_flows,
+    group_summary,
+    latest_by_reservoir,
+    options,
+    reservoir_history,
+    summarize,
 )
 from .layout import status_badge
 from .theme import group_color
@@ -111,7 +123,7 @@ def _alert_items(rows: pl.DataFrame) -> list:
 
 def _alert_counts(latest: pl.DataFrame) -> list:
     counts = latest["status"].value_counts() if not latest.is_empty() else pl.DataFrame({"status": [], "count": []})
-    lookup = dict(zip(counts["status"].to_list(), counts["count"].to_list()))
+    lookup = dict(zip(counts["status"].to_list(), counts["count"].to_list(), strict=True))
     return [
         html.Div([status_badge(status), html.Span(str(lookup.get(status, 0)), className="count")], className="alert-count")
         for status in ("Critical", "Alert", "Watch", "Normal")
