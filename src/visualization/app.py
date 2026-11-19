@@ -19,7 +19,7 @@ def create_app(source: str | Path | None = None, df: pl.DataFrame | None = None)
 
     app = Dash(
         __name__,
-        title="Painel Hídrico",
+        title="Water Dashboard",
         assets_folder=str(ASSETS),
         external_stylesheets=[FONTS],
         suppress_callback_exceptions=False,

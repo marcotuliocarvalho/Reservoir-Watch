@@ -10,8 +10,8 @@ from .app import create_app
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Painel Hídrico (Dash)")
-    parser.add_argument("--source", help="arquivo, diretório ou glob de arquivos Parquet")
+    parser = argparse.ArgumentParser(description="Water Dashboard (Dash)")
+    parser.add_argument("--source", help="Parquet file, directory or glob pattern")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8050)
     parser.add_argument("--debug", action="store_true")

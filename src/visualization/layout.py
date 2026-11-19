@@ -8,39 +8,37 @@ from .data import GROUPS, METRICS, REGION_ORDER, STATUS_RULES, SUBSYSTEM_ORDER, 
 from .theme import STATUS_ICONS
 
 PERIODS = [
-    {"label": "30 dias", "value": "30"},
-    {"label": "90 dias", "value": "90"},
-    {"label": "1 ano", "value": "365"},
-    {"label": "Tudo", "value": "all"},
+    {"label": "30 days", "value": "30"},
+    {"label": "90 days", "value": "90"},
+    {"label": "1 year", "value": "365"},
+    {"label": "All", "value": "all"},
 ]
 
-BR = {"decimal": ",", "group": "."}
-
 TABLE_COLUMNS = [
-    {"name": "Reservatório", "id": "reservatorio"},
+    {"name": "Reservoir", "id": "reservatorio"},
     {"name": "Status", "id": "status"},
-    {"name": "UF", "id": "uf"},
-    {"name": "Região", "id": "regiao"},
-    {"name": "Subsistema", "id": "subsistema"},
-    {"name": "Bacia", "id": "bacia"},
-    {"name": "Tipo", "id": "tipo"},
-    {"name": "Valor (%)", "id": "valor", "type": "numeric", "format": {"specifier": ".1f", "locale": BR}},
-    {"name": "Δ 30 dias (p.p.)", "id": "delta_30d", "type": "numeric", "format": {"specifier": "+.1f", "locale": BR}},
-    {"name": "Afluente (m³/s)", "id": "vazao_afluente", "type": "numeric", "format": {"specifier": ",.0f", "locale": BR}},
-    {"name": "Defluente (m³/s)", "id": "vazao_defluente", "type": "numeric", "format": {"specifier": ",.0f", "locale": BR}},
-    {"name": "Última leitura", "id": "data"},
+    {"name": "State", "id": "uf"},
+    {"name": "Region", "id": "regiao"},
+    {"name": "Subsystem", "id": "subsistema"},
+    {"name": "Basin", "id": "bacia"},
+    {"name": "Type", "id": "tipo"},
+    {"name": "Value (%)", "id": "valor", "type": "numeric", "format": {"specifier": ".1f"}},
+    {"name": "Δ 30 days (pp)", "id": "delta_30d", "type": "numeric", "format": {"specifier": "+.1f"}},
+    {"name": "Inflow (m³/s)", "id": "vazao_afluente", "type": "numeric", "format": {"specifier": ",.0f"}},
+    {"name": "Outflow (m³/s)", "id": "vazao_defluente", "type": "numeric", "format": {"specifier": ",.0f"}},
+    {"name": "Last reading", "id": "data"},
 ]
 
 STATUS_CLASS = {
-    "Crítico": "critical", "Alerta": "serious", "Atenção": "warning",
-    "Normal": "good", "Sem classificação": "none",
+    "Critical": "critical", "Alert": "serious", "Watch": "warning",
+    "Normal": "good", "Unclassified": "none",
 }
 
 DROP_ICON = html.Span(className="brand-mark", children=html.Span(className="brand-drop"), **{"aria-hidden": "true"})
 
 
 def status_badge(status: str | None) -> html.Span:
-    status = status or "Sem classificação"
+    status = status or "Unclassified"
     return html.Span(
         f"{STATUS_ICONS[status]} {status}",
         className=f"status status-{STATUS_CLASS[status]}",
@@ -85,11 +83,11 @@ def _graph(graph_id: str, height: int | None = None, config: dict | None = None)
 def _status_rules() -> html.Details:
     return html.Details(
         [
-            html.Summary("Regras de criticidade"),
+            html.Summary("Criticality rules"),
             html.Ul([html.Li([status_badge(status), f" {rule}"]) for status, rule in STATUS_RULES.items()]),
             html.P(
-                "Só reservatórios com armazenamento (tipos RCU, RES, RBB) são classificados, "
-                "sempre pelo volume útil. Limites de referência, não critério oficial do ONS.",
+                "Only storage reservoirs (types RCU, RES, RBB) are classified, "
+                "always by useful volume. Reference thresholds, not an official ONS criterion.",
                 className="muted",
             ),
         ],
@@ -106,8 +104,8 @@ def build_layout(df: pl.DataFrame) -> html.Div:
                 [
                     DROP_ICON,
                     html.Div([
-                        html.H1("Painel Hídrico"),
-                        html.P("Reservatórios do Sistema Interligado Nacional · dados abertos ONS", className="subtitle"),
+                        html.H1("Water Dashboard"),
+                        html.P("Reservoirs of the Brazilian National Interconnected System · ONS open data", className="subtitle"),
                     ]),
                 ],
                 className="brand",
@@ -116,8 +114,8 @@ def build_layout(df: pl.DataFrame) -> html.Div:
                 [
                     html.Span(id="period-label", className="period-label"),
                     html.Button(
-                        [html.Span(className="theme-icon"), html.Span("Tema", className="sr-only")],
-                        id="theme-toggle", className="icon-button", title="Alternar tema claro/escuro",
+                        [html.Span(className="theme-icon"), html.Span("Theme", className="sr-only")],
+                        id="theme-toggle", className="icon-button", title="Toggle light/dark theme",
                     ),
                 ],
                 className="header-actions",
@@ -130,17 +128,17 @@ def build_layout(df: pl.DataFrame) -> html.Div:
         [
             html.Div(
                 [
-                    _field("Período", dcc.RadioItems(PERIODS, value="365", id="period-quick", className="chips", inline=True)),
-                    _field("Intervalo", dcc.DatePickerRange(
+                    _field("Period", dcc.RadioItems(PERIODS, value="365", id="period-quick", className="chips", inline=True)),
+                    _field("Date range", dcc.DatePickerRange(
                         id="date-range", min_date_allowed=min_date, max_date_allowed=max_date,
                         start_date=max(min_date, max_date.replace(year=max_date.year - 1)), end_date=max_date,
-                        display_format="DD/MM/YYYY", first_day_of_week=1,
+                        display_format="MMM D, YYYY", first_day_of_week=0,
                     )),
-                    _field("Métrica", dcc.RadioItems(
+                    _field("Metric", dcc.RadioItems(
                         [{"label": m["label"], "value": key} for key, m in METRICS.items()],
                         value="volume_util", id="metric", className="chips", inline=True,
                     )),
-                    _field("Agrupar por", dcc.RadioItems(
+                    _field("Group by", dcc.RadioItems(
                         [{"label": g["label"], "value": key} for key, g in GROUPS.items()],
                         value="regiao", id="group", className="chips", inline=True,
                     )),
@@ -149,39 +147,39 @@ def build_layout(df: pl.DataFrame) -> html.Div:
             ),
             html.Div(
                 [
-                    _field("Região", dcc.Dropdown(
-                        [{"label": r, "value": r} for r in REGION_ORDER], multi=True, id="f-region", placeholder="Todas",
+                    _field("Region", dcc.Dropdown(
+                        [{"label": r, "value": r} for r in REGION_ORDER], multi=True, id="f-region", placeholder="All",
                     )),
-                    _field("Subsistema", dcc.Dropdown(
-                        [{"label": s, "value": s} for s in SUBSYSTEM_ORDER], multi=True, id="f-subsystem", placeholder="Todos",
+                    _field("Subsystem", dcc.Dropdown(
+                        [{"label": s, "value": s} for s in SUBSYSTEM_ORDER], multi=True, id="f-subsystem", placeholder="All",
                     )),
-                    _field("REE", dcc.Dropdown(options(df, "ree"), multi=True, id="f-ree", placeholder="Todos")),
-                    _field("Bacia", dcc.Dropdown(options(df, "bacia"), multi=True, id="f-basin", placeholder="Todas")),
-                    _field("Tipo", dcc.Dropdown(options(df, "tipo"), multi=True, id="f-type", placeholder="Todos")),
+                    _field("REE", dcc.Dropdown(options(df, "ree"), multi=True, id="f-ree", placeholder="All")),
+                    _field("Basin", dcc.Dropdown(options(df, "bacia"), multi=True, id="f-basin", placeholder="All")),
+                    _field("Type", dcc.Dropdown(options(df, "tipo"), multi=True, id="f-type", placeholder="All")),
                     _field("Status", dcc.Dropdown(
                         [{"label": f"{STATUS_ICONS[s]} {s}", "value": s} for s in STATUS_RULES],
-                        multi=True, id="f-status", placeholder="Todos",
+                        multi=True, id="f-status", placeholder="All",
                     )),
-                    _field("Faixa atual (%)", dcc.RangeSlider(
+                    _field("Current range (%)", dcc.RangeSlider(
                         0, 100, 5, value=[0, 100], id="f-range",
                         marks={0: "0", 25: "25", 50: "50", 75: "75", 100: "100"},
                         tooltip={"placement": "bottom", "always_visible": False},
                     ), "field-range"),
-                    html.Button("Limpar filtros", id="clear-filters", className="text-button"),
+                    html.Button("Clear filters", id="clear-filters", className="text-button"),
                 ],
                 className="filter-row filter-row-dims",
             ),
         ],
         className="filters card",
-        **{"aria-label": "Filtros"},
+        **{"aria-label": "Filters"},
     )
 
     kpis = html.Section(
         [
-            _kpi("kpi-metric", "Média atual"),
-            _kpi("kpi-alerts", "Reservatórios em alerta"),
-            _kpi("kpi-inflow", "Vazão afluente total"),
-            _kpi("kpi-outflow", "Vazão defluente total"),
+            _kpi("kpi-metric", "Current mean"),
+            _kpi("kpi-alerts", "Reservoirs in alert"),
+            _kpi("kpi-inflow", "Total inflow"),
+            _kpi("kpi-outflow", "Total outflow"),
         ],
         className="kpis",
     )
@@ -189,29 +187,29 @@ def build_layout(df: pl.DataFrame) -> html.Div:
     map_controls = html.Div(
         [
             dcc.RadioItems(
-                [{"label": "Cor por área", "value": "area"}, {"label": "Cor por média", "value": "valor"}],
+                [{"label": "Color by area", "value": "area"}, {"label": "Color by mean", "value": "valor"}],
                 value="area", id="map-color", className="chips chips-sm", inline=True,
             ),
             dcc.Checklist(
-                [{"label": "Reservatórios", "value": "on"}], value=["on"], id="map-points",
+                [{"label": "Reservoirs", "value": "on"}], value=["on"], id="map-points",
                 className="chips chips-sm", inline=True,
             ),
-            html.Button("Ver Brasil", id="map-reset", className="text-button text-button-sm"),
+            html.Button("Show Brazil", id="map-reset", className="text-button text-button-sm"),
         ],
         className="card-controls",
     )
     map_card = _card(
-        "Mapa",
-        "Clique numa área para filtrar e aproximar; clique num ponto para ver o reservatório. "
-        "Role para zoom; duplo clique volta.",
+        "Map",
+        "Click an area to filter and zoom in; click a point to see the reservoir. "
+        "Scroll to zoom; double-click to reset.",
         _graph("map", 480, charts.MAP_CONFIG),
         class_name="card-map",
         extra=map_controls,
     )
 
     alerts_card = _card(
-        "Alertas de criticidade",
-        "Reservatórios com armazenamento, pela última leitura",
+        "Criticality alerts",
+        "Storage reservoirs, by last reading",
         html.Div(
             [
                 html.Div(id="alert-counts", className="alert-counts"),
@@ -224,18 +222,18 @@ def build_layout(df: pl.DataFrame) -> html.Div:
     )
 
     areas_card = _card(
-        "Análise por área",
-        "Última leitura de cada reservatório. Clique numa área para filtrar.",
+        "Analysis by area",
+        "Last reading of each reservoir. Click an area to filter.",
         html.Div(id="area-tiles", className="area-tiles"),
         card_id="areas-card",
     )
 
     focus = _card(
-        "Reservatório em foco",
-        "Estado atual · escolha na lista, no mapa, nos alertas ou no ranking",
+        "Reservoir in focus",
+        "Current state · pick from the list, map, alerts or ranking",
         html.Div(
             [
-                dcc.Dropdown(id="focus-reservoir", clearable=False, placeholder="Selecione um reservatório"),
+                dcc.Dropdown(id="focus-reservoir", clearable=False, placeholder="Select a reservoir"),
                 html.Div(id="focus-body", className="focus-body"),
                 dcc.Graph(id="focus-sparkline", config={"displayModeBar": False}, style={"height": "120px", "width": "100%"}),
             ],
@@ -257,20 +255,20 @@ def build_layout(df: pl.DataFrame) -> html.Div:
                     html.Div(
                         [
                             focus,
-                            _card("Evolução por área", "Média diária simples entre reservatórios", _graph("timeseries", 360)),
+                            _card("Trend by area", "Simple daily mean across reservoirs", _graph("timeseries", 360)),
                         ],
                         className="grid grid-2",
                     ),
                     html.Div(
                         [
-                            _card("Menores níveis atuais", "15 reservatórios com menor valor na última leitura", _graph("ranking")),
-                            _card("Vazões", "Soma diária dos reservatórios selecionados", _graph("flows", 360)),
+                            _card("Lowest current levels", "15 reservoirs with the lowest value at the last reading", _graph("ranking")),
+                            _card("Flows", "Daily sum over the selected reservoirs", _graph("flows", 360)),
                         ],
                         className="grid grid-2",
                     ),
                     _card(
-                        "Tabela",
-                        "Última leitura de cada reservatório",
+                        "Table",
+                        "Last reading of each reservoir",
                         dash_table.DataTable(
                             id="table", columns=TABLE_COLUMNS, page_size=12,
                             sort_action="native", filter_action="native",
@@ -285,8 +283,8 @@ def build_layout(df: pl.DataFrame) -> html.Div:
             ),
             html.Footer(
                 [
-                    "Fonte: ONS — Dados Hidrológicos de Reservatórios e cadastro de Reservatórios (dados.ons.org.br). ",
-                    "Mapa: malha de UFs do IBGE. A região vem da UF do cadastro ONS; a associação estado–subsistema no mapa é aproximada.",
+                    "Source: ONS — Reservoir Hydrological Data and Reservoir Registry (dados.ons.org.br). ",
+                    "Map: IBGE state mesh. The region comes from the state in the ONS registry; the state–subsystem mapping on the map is approximate.",
                 ],
                 className="footer",
             ),

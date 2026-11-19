@@ -21,30 +21,30 @@ SUBSYSTEM_ORDER = ["Sudeste/Centro-Oeste", "Sul", "Nordeste", "Norte"]
 REGION_ORDER = geo.REGION_ORDER
 
 GROUPS = {
-    "regiao": {"label": "Região", "column": "regiao", "order": REGION_ORDER},
-    "subsistema": {"label": "Subsistema", "column": "subsistema", "order": SUBSYSTEM_ORDER},
+    "regiao": {"label": "Region", "column": "regiao", "order": REGION_ORDER},
+    "subsistema": {"label": "Subsystem", "column": "subsistema", "order": SUBSYSTEM_ORDER},
 }
 
 METRICS = {
     "volume_util": {
-        "label": "Volume útil",
-        "short": "Volume útil",
-        "description": "Volume útil armazenado (% do volume útil máximo)",
+        "label": "Useful volume",
+        "short": "Useful volume",
+        "description": "Stored useful volume (% of maximum useful volume)",
     },
     "nivel_norm": {
-        "label": "Nível normalizado",
-        "short": "Nível",
-        "description": "Nível de montante dividido pelo maior nível histórico do reservatório",
+        "label": "Normalized level",
+        "short": "Level",
+        "description": "Upstream level divided by the reservoir's highest historical level",
     },
 }
 
-FLOW_COLUMNS = {"vazao_afluente": "Afluente", "vazao_defluente": "Defluente"}
+FLOW_COLUMNS = {"vazao_afluente": "Inflow", "vazao_defluente": "Outflow"}
 
 TYPE_LABELS = {
-    "RCU": "Reservatório com usina",
-    "RES": "Reservatório sem usina",
-    "RBB": "Reservatório com usina de bombeamento",
-    "FIO": "Fio d'água",
+    "RCU": "Reservoir with power plant",
+    "RES": "Reservoir without power plant",
+    "RBB": "Reservoir with pumped-storage plant",
+    "FIO": "Run-of-river",
 }
 
 # ---------- Criticality ----------
@@ -55,13 +55,13 @@ CRITICAL_BELOW = 20.0  # % of useful volume
 ALERT_BELOW = 40.0
 FAST_DROP = 10.0  # percentage points lost in 30 days
 
-STATUS_ORDER = ["Crítico", "Alerta", "Atenção", "Normal", "Sem classificação"]
+STATUS_ORDER = ["Critical", "Alert", "Watch", "Normal", "Unclassified"]
 STATUS_RULES = {
-    "Crítico": f"volume útil abaixo de {CRITICAL_BELOW:.0f}%",
-    "Alerta": f"volume útil entre {CRITICAL_BELOW:.0f}% e {ALERT_BELOW:.0f}%",
-    "Atenção": f"queda de {FAST_DROP:.0f} p.p. ou mais em 30 dias",
-    "Normal": "sem gatilhos",
-    "Sem classificação": "fio d'água ou sem leitura de volume",
+    "Critical": f"useful volume below {CRITICAL_BELOW:.0f}%",
+    "Alert": f"useful volume between {CRITICAL_BELOW:.0f}% and {ALERT_BELOW:.0f}%",
+    "Watch": f"drop of {FAST_DROP:.0f} pp or more in 30 days",
+    "Normal": "no triggers",
+    "Unclassified": "run-of-river or no volume reading",
 }
 
 
@@ -89,7 +89,7 @@ def resolve_sources(source: str | Path | None = None) -> list[str]:
             return files
 
     raise FileNotFoundError(
-        "Nenhum arquivo Parquet encontrado. Informe --source ou defina HIDRIC_DATA_DIR."
+        "No Parquet file found. Pass --source or set HIDRIC_DATA_DIR."
     )
 
 
@@ -283,10 +283,10 @@ def _status_expr() -> pl.Expr:
     volume, delta = pl.col("volume_atual"), pl.col("delta_volume_30d")
     storage = pl.col("tipo").is_in(STORAGE_TYPES)
     return (
-        pl.when(~storage | volume.is_null()).then(pl.lit("Sem classificação"))
-        .when(volume < CRITICAL_BELOW).then(pl.lit("Crítico"))
-        .when(volume < ALERT_BELOW).then(pl.lit("Alerta"))
-        .when(delta <= -FAST_DROP).then(pl.lit("Atenção"))
+        pl.when(~storage | volume.is_null()).then(pl.lit("Unclassified"))
+        .when(volume < CRITICAL_BELOW).then(pl.lit("Critical"))
+        .when(volume < ALERT_BELOW).then(pl.lit("Alert"))
+        .when(delta <= -FAST_DROP).then(pl.lit("Watch"))
         .otherwise(pl.lit("Normal"))
         .alias("status")
     )
@@ -347,7 +347,7 @@ def alerts(latest: pl.DataFrame) -> pl.DataFrame:
         return latest
     rank = {status: i for i, status in enumerate(STATUS_ORDER)}
     return (
-        latest.filter(pl.col("status").is_in(["Crítico", "Alerta", "Atenção"]))
+        latest.filter(pl.col("status").is_in(["Critical", "Alert", "Watch"]))
         .with_columns(pl.col("status").replace_strict(rank, return_dtype=pl.Int8).alias("_rank"))
         .sort("_rank", "volume_atual")
         .drop("_rank")
@@ -376,9 +376,9 @@ def group_summary(latest: pl.DataFrame, group: str) -> pl.DataFrame:
             pl.col("valor").mean().alias("valor"),
             pl.col("delta_30d").mean().alias("delta_30d"),
             pl.len().alias("reservatorios"),
-            (pl.col("status") == "Crítico").sum().alias("criticos"),
-            (pl.col("status") == "Alerta").sum().alias("alertas"),
-            (pl.col("status") == "Atenção").sum().alias("atencao"),
+            (pl.col("status") == "Critical").sum().alias("criticos"),
+            (pl.col("status") == "Alert").sum().alias("alertas"),
+            (pl.col("status") == "Watch").sum().alias("atencao"),
         )
         .join(weighted, on=column, how="left")
         .rename({column: "grupo"})

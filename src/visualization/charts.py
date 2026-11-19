@@ -22,8 +22,7 @@ MAP_CONFIG = {"displayModeBar": False, "responsive": True, "scrollZoom": True, "
 def _number(value: float | None, decimals: int = 1) -> str:
     if value is None or (isinstance(value, float) and math.isnan(value)):
         return "–"
-    text = f"{value:,.{decimals}f}"
-    return text.replace(",", "_").replace(".", ",").replace("_", ".")
+    return f"{value:,.{decimals}f}"
 
 
 def _rgba(hex_color: str, alpha: float) -> str:
@@ -32,7 +31,7 @@ def _rgba(hex_color: str, alpha: float) -> str:
     return f"rgba({r},{g},{b},{alpha})"
 
 
-def empty_figure(theme: str | None, message: str = "Sem dados para os filtros atuais") -> go.Figure:
+def empty_figure(theme: str | None, message: str = "No data for the current filters") -> go.Figure:
     t = tokens(theme)
     fig = go.Figure()
     fig.update_layout(
@@ -80,7 +79,7 @@ def brazil_map(
             rows.append([
                 geo.STATES[code][0],
                 geo.area_of(code, group),
-                f"{_number(row['valor'])}%" if row else "sem dados",
+                f"{_number(row['valor'])}%" if row else "no data",
                 row["reservatorios"] if row else 0,
                 (row["criticos"] + row["alertas"]) if row else 0,
             ])
@@ -88,8 +87,8 @@ def brazil_map(
 
     hover = (
         "<b>%{customdata[1]}</b> · %{customdata[0]}<br>"
-        f"{meta['short']} médio: %{{customdata[2]}}<br>"
-        "Reservatórios: %{customdata[3]} · em alerta: %{customdata[4]}"
+        f"Mean {meta['short'].lower()}: %{{customdata[2]}}<br>"
+        "Reservoirs: %{customdata[3]} · in alert: %{customdata[4]}"
         "<extra>" + label + "</extra>"
     )
 
@@ -149,7 +148,7 @@ def brazil_map(
                 ],
                 hovertemplate=(
                     "<b>%{customdata[1]}</b> · %{customdata[2]}<br>"
-                    "Volume útil: %{customdata[3]}<br>" + status + "<extra>Reservatório</extra>"
+                    "Useful volume: %{customdata[3]}<br>" + status + "<extra>Reservoir</extra>"
                 ),
             ))
 
@@ -253,10 +252,10 @@ def reservoir_ranking(
     t = tokens(theme)
     column = GROUPS[group]["column"]
     order = GROUPS[group]["order"]
-    rows = latest.head(limit).reverse().with_columns(pl.col(column).fill_null("Sem localização").alias("_area"))
+    rows = latest.head(limit).reverse().with_columns(pl.col(column).fill_null("No location").alias("_area"))
     fig = go.Figure()
 
-    for area in [*order, "Sem localização"]:
+    for area in [*order, "No location"]:
         part = rows.filter(pl.col("_area") == area)
         if part.is_empty():
             continue
@@ -293,14 +292,14 @@ def sparkline(history: pl.DataFrame, metric: str, theme: str | None) -> go.Figur
     """Compact history of one reservoir for the focus card."""
     series = history.drop_nulls(metric)
     if series.is_empty():
-        return empty_figure(theme, "Sem histórico")
+        return empty_figure(theme, "No history")
 
     t = tokens(theme)
     color = t["series"][0]
     fig = go.Figure(go.Scatter(
         x=series["data"], y=series[metric], mode="lines",
         line={"color": color, "width": 2}, fill="tozeroy", fillcolor=_rgba(color, 0.12),
-        hovertemplate="%{x|%d/%m/%Y}<br>%{y:.1f}%<extra></extra>",
+        hovertemplate="%{x|%b %d, %Y}<br>%{y:.1f}%<extra></extra>",
     ))
     fig.update_layout(**base_layout(theme, margin={"l": 0, "r": 0, "t": 4, "b": 0}), showlegend=False, height=120)
     fig.update_yaxes(range=[0, 100], showgrid=False, ticksuffix="%", nticks=3, tickfont={"size": 10})

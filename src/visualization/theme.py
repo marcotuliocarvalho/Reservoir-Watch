@@ -36,19 +36,19 @@ def tokens(theme: str | None) -> dict:
 
 
 STATUS_COLORS = {
-    "Crítico": "#d03b3b",
-    "Alerta": "#ec835a",
-    "Atenção": "#fab219",
+    "Critical": "#d03b3b",
+    "Alert": "#ec835a",
+    "Watch": "#fab219",
     "Normal": "#0ca30c",
-    "Sem classificação": "#9a9992",
+    "Unclassified": "#9a9992",
 }
 
 STATUS_ICONS = {
-    "Crítico": "▼",
-    "Alerta": "◆",
-    "Atenção": "↘",
+    "Critical": "▼",
+    "Alert": "◆",
+    "Watch": "↘",
     "Normal": "●",
-    "Sem classificação": "○",
+    "Unclassified": "○",
 }
 
 
@@ -91,7 +91,7 @@ def base_layout(theme: str | None, **overrides) -> dict:
             "font": {"color": t["text_secondary"], "size": 12},
             "bgcolor": "rgba(0,0,0,0)",
         },
-        "separators": ",.",
+        "separators": ".,",
         "autosize": True,
     }
     layout.update(overrides)
