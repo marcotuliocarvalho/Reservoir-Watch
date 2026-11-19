@@ -2,6 +2,9 @@
 
 [![CI](https://github.com/marcotuliocarvalho/Reservoir-Watch/actions/workflows/ci.yml/badge.svg)](https://github.com/marcotuliocarvalho/Reservoir-Watch/actions/workflows/ci.yml)
 
+**Live demo:** <https://reservoir-watch.onrender.com> (data since 2020; the
+free server sleeps when idle, so the first visit can take about a minute).
+
 Ingestion pipeline and interactive dashboard for the reservoirs of Brazil's
 National Interconnected System (SIN), built on open data from
 [ONS](https://dados.ons.org.br) (Operador Nacional do Sistema Elétrico).
