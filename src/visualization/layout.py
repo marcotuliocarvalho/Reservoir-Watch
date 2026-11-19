@@ -55,7 +55,11 @@ def _card(title, subtitle, body, class_name: str = "", extra=None, card_id: str 
     if extra is not None:
         header.append(extra)
     props = {"id": card_id} if card_id else {}
-    return html.Section([html.Header(header, className="card-header"), body], className=f"card {class_name}", **props)
+    return html.Section(
+        [html.Header(header, className="card-header"), html.Div(body, className="card-body")],
+        className=f"card {class_name}",
+        **props,
+    )
 
 
 def _kpi(kpi_id: str, label: str) -> html.Div:
@@ -70,13 +74,12 @@ def _kpi(kpi_id: str, label: str) -> html.Div:
     )
 
 
-def _graph(graph_id: str, height: int | None = None, config: dict | None = None) -> dcc.Loading:
-    style = {"width": "100%"}
-    if height:
-        style["height"] = f"{height}px"
+def _graph(graph_id: str, config: dict | None = None) -> dcc.Loading:
+    """Graph that fills its card. Height comes from CSS (``.graph-<id>``)."""
     return dcc.Loading(
-        dcc.Graph(id=graph_id, config=config or charts.GRAPH_CONFIG, style=style),
+        dcc.Graph(id=graph_id, config=config or charts.GRAPH_CONFIG, style={"width": "100%", "height": "100%"}),
         type="dot", color="#2a78d6", delay_show=400,
+        parent_className=f"graph-wrap graph-{graph_id}",
     )
 
 
@@ -124,7 +127,7 @@ def build_layout(df: pl.DataFrame) -> html.Div:
         className="topbar",
     )
 
-    filters = html.Section(
+    filters = html.Aside(
         [
             html.Div(
                 [
@@ -143,7 +146,7 @@ def build_layout(df: pl.DataFrame) -> html.Div:
                         value="regiao", id="group", className="chips", inline=True,
                     )),
                 ],
-                className="filter-row",
+                className="filter-group",
             ),
             html.Div(
                 [
@@ -167,10 +170,17 @@ def build_layout(df: pl.DataFrame) -> html.Div:
                     ), "field-range"),
                     html.Button("Clear filters", id="clear-filters", className="text-button"),
                 ],
-                className="filter-row filter-row-dims",
+                className="filter-group",
+            ),
+            html.Footer(
+                [
+                    "Source: ONS — Reservoir Hydrological Data and Reservoir Registry (dados.ons.org.br). ",
+                    "Map: IBGE state mesh. The region comes from the state in the ONS registry; the state–subsystem mapping on the map is approximate.",
+                ],
+                className="footer",
             ),
         ],
-        className="filters card",
+        className="sidebar",
         **{"aria-label": "Filters"},
     )
 
@@ -202,7 +212,7 @@ def build_layout(df: pl.DataFrame) -> html.Div:
         "Map",
         "Click an area to filter and zoom in; click a point to see the reservoir. "
         "Scroll to zoom; double-click to reset.",
-        _graph("map", 480, charts.MAP_CONFIG),
+        _graph("map", charts.MAP_CONFIG),
         class_name="card-map",
         extra=map_controls,
     )
@@ -225,6 +235,7 @@ def build_layout(df: pl.DataFrame) -> html.Div:
         "Analysis by area",
         "Last reading of each reservoir. Click an area to filter.",
         html.Div(id="area-tiles", className="area-tiles"),
+        class_name="card-areas",
         card_id="areas-card",
     )
 
@@ -235,58 +246,63 @@ def build_layout(df: pl.DataFrame) -> html.Div:
             [
                 dcc.Dropdown(id="focus-reservoir", clearable=False, placeholder="Select a reservoir"),
                 html.Div(id="focus-body", className="focus-body"),
-                dcc.Graph(id="focus-sparkline", config={"displayModeBar": False}, style={"height": "120px", "width": "100%"}),
+                dcc.Graph(id="focus-sparkline", config={"displayModeBar": False}, style={"height": "100px", "width": "100%"}),
             ],
             className="focus",
         ),
         class_name="card-focus",
     )
 
+    trend_card = _card("Trend by area", "Simple daily mean across reservoirs", _graph("timeseries"), class_name="card-trend")
+
+    table = dash_table.DataTable(
+        id="table", columns=TABLE_COLUMNS, page_size=12,
+        sort_action="native", filter_action="native",
+        style_as_list_view=True, style_table={"overflowX": "auto"},
+        style_cell={"fontFamily": "inherit", "fontSize": "13px", "padding": "6px 10px", "textAlign": "left"},
+        style_cell_conditional=[{"if": {"column_type": "numeric"}, "textAlign": "right"}],
+    )
+    details_card = html.Section(
+        dcc.Tabs(
+            [
+                dcc.Tab(
+                    html.Div([html.P("Daily sum over the selected reservoirs", className="card-subtitle"), _graph("flows")], className="tab-body"),
+                    label="Flows", value="flows", className="tab", selected_className="tab-selected",
+                ),
+                dcc.Tab(
+                    html.Div([html.P("15 reservoirs with the lowest value at the last reading", className="card-subtitle"), _graph("ranking")], className="tab-body tab-scroll"),
+                    label="Lowest levels", value="ranking", className="tab", selected_className="tab-selected",
+                ),
+                dcc.Tab(
+                    html.Div([html.P("Last reading of each reservoir", className="card-subtitle"), table], className="tab-body tab-scroll card-table"),
+                    label="Table", value="table", className="tab", selected_className="tab-selected",
+                ),
+            ],
+            value="flows", className="tabs", content_className="tabs-content", parent_className="tabs-root",
+        ),
+        className="card card-details",
+        **{"aria-label": "Flows, lowest levels and table"},
+    )
+
     return html.Div(
         [
             dcc.Store(id="theme", storage_type="local"),
             header,
-            html.Main(
+            html.Div(
                 [
                     filters,
-                    kpis,
-                    html.Div([map_card, alerts_card], className="grid grid-map"),
-                    areas_card,
-                    html.Div(
+                    html.Main(
                         [
-                            focus,
-                            _card("Trend by area", "Simple daily mean across reservoirs", _graph("timeseries", 360)),
+                            kpis,
+                            html.Div(
+                                [map_card, trend_card, alerts_card, focus, details_card, areas_card],
+                                className="board",
+                            ),
                         ],
-                        className="grid grid-2",
-                    ),
-                    html.Div(
-                        [
-                            _card("Lowest current levels", "15 reservoirs with the lowest value at the last reading", _graph("ranking")),
-                            _card("Flows", "Daily sum over the selected reservoirs", _graph("flows", 360)),
-                        ],
-                        className="grid grid-2",
-                    ),
-                    _card(
-                        "Table",
-                        "Last reading of each reservoir",
-                        dash_table.DataTable(
-                            id="table", columns=TABLE_COLUMNS, page_size=12,
-                            sort_action="native", filter_action="native",
-                            style_as_list_view=True, style_table={"overflowX": "auto"},
-                            style_cell={"fontFamily": "inherit", "fontSize": "13px", "padding": "8px 10px", "textAlign": "left"},
-                            style_cell_conditional=[{"if": {"column_type": "numeric"}, "textAlign": "right"}],
-                        ),
-                        class_name="card-table",
+                        className="content",
                     ),
                 ],
-                className="content",
-            ),
-            html.Footer(
-                [
-                    "Source: ONS — Reservoir Hydrological Data and Reservoir Registry (dados.ons.org.br). ",
-                    "Map: IBGE state mesh. The region comes from the state in the ONS registry; the state–subsystem mapping on the map is approximate.",
-                ],
-                className="footer",
+                className="shell",
             ),
         ],
         className="app",
