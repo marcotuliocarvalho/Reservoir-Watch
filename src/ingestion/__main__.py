@@ -1,14 +1,27 @@
-"""Run with: python -m src.ingestion [year ...]"""
+"""Run with: python -m src.ingestion [--write] [year ...]
 
-import sys
+Without ``--write`` the pipeline runs in memory and prints a preview. With
+``--write`` it downloads the raw files and writes the processed dataset to
+HIDRIC_DATA_DIR (default ./data), like one run of the Airflow DAG.
+"""
+
+import argparse
 
 from .config import IngestionConfig
-from .pipeline import run_ingestion
+from .pipeline import ingest_to_disk, run_ingestion
 
 
-def main() -> None:
-    years = tuple(int(arg) for arg in sys.argv[1:]) or None
-    config = IngestionConfig.from_env(years=years)
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="ONS reservoir data ingestion")
+    parser.add_argument("years", nargs="*", type=int, help="Years to ingest (default: all)")
+    parser.add_argument("--write", action="store_true", help="Download and write the processed dataset")
+    args = parser.parse_args(argv)
+
+    config = IngestionConfig.from_env(years=tuple(args.years) or None)
+    if args.write:
+        print(f"Wrote {ingest_to_disk(config)}")
+        return
+
     data = run_ingestion(config).collect()
     print(data.head())
     print(data.shape)

@@ -7,6 +7,7 @@ Airflow installed.
 """
 
 import os
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from pathlib import Path
 
@@ -76,6 +77,22 @@ def write_processed(paths: list[str | Path], output: str | Path, config: Ingesti
     process_files(paths, config).collect().write_parquet(partial)
     partial.replace(output)
     return output
+
+
+def ingest_to_disk(config: IngestionConfig, root: str | Path | None = None, workers: int = 4) -> Path:
+    """Download every yearly file and write the processed dataset.
+
+    Same result as one DAG run, without Airflow: ``workers`` parallel
+    downloads, like the DAG's ``max_active_tis_per_dag``. Used by the CLI and
+    the online demo image.
+    """
+    root = Path(root) if root is not None else data_dir()
+    urls = catalog.get_parquet_urls(config)
+    if not urls:
+        raise ValueError("Nenhum arquivo Parquet encontrado no catálogo da ONS.")
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        paths = list(pool.map(lambda url: fetch_year(url, root / "raw", timeout=config.timeout), urls))
+    return write_processed(paths, root / OUTPUT_NAME, config)
 
 
 # ---------- Airflow DAG ----------
