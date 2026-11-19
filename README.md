@@ -1,5 +1,7 @@
 # Water Dashboard
 
+[![CI](https://github.com/marcotuliocarvalho/Reservoir-Watch/actions/workflows/ci.yml/badge.svg)](https://github.com/marcotuliocarvalho/Reservoir-Watch/actions/workflows/ci.yml)
+
 Ingestion pipeline and interactive dashboard for the reservoirs of Brazil's
 National Interconnected System (SIN), built on open data from
 [ONS](https://dados.ons.org.br) (Operador Nacional do Sistema Elétrico).
@@ -30,6 +32,9 @@ ONS CKAN API ──> discover ──> download (1 task per year) ──> clean +
 | `Dockerfile` | Airflow image |
 | `Dockerfile.dashboard` | Dashboard image (bundles the reservoir registry) |
 | `docker-compose.yaml` | Full stack: `airflow` and `dashboard` services |
+| `deploy/huggingface/` | Self-contained demo image for Hugging Face Spaces |
+| `tests/` | Unit and smoke tests (pytest) |
+| `.github/workflows/` | CI (lint, tests, DAG, Docker builds) and demo deploy |
 
 ## Dashboard features
 
@@ -110,11 +115,14 @@ To ingest only some years, trigger the DAG with the `years` param, for example `
 ### Without Airflow
 
 ```bash
-python -m src.ingestion            # all years
-python -m src.ingestion 2024 2025  # some years
+python -m src.ingestion                    # all years, preview only
+python -m src.ingestion 2024 2025          # some years, preview only
+python -m src.ingestion --write            # download and write the dataset
 ```
 
-This runs the pipeline in memory and prints a preview. It does not write files.
+Without `--write`, the pipeline runs in memory and prints a preview. With
+`--write`, it downloads the yearly files (4 in parallel) to
+`$HIDRIC_DATA_DIR/raw` and writes the processed dataset, like one DAG run.
 
 ## Running the dashboard
 
@@ -126,6 +134,43 @@ python -m src.visualization --port 8050 --debug
 
 Open http://127.0.0.1:8050. `--source` takes a file, a directory or a glob
 pattern. Raw ONS files go through the cleaning pipeline automatically.
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+ruff check .
+pytest --cov=src
+```
+
+The tests use small synthetic frames shaped like the ONS files and never call
+the network. The DAG test runs only when Airflow is installed (the CI has a
+separate job for it).
+
+## CI and online demo
+
+GitHub Actions runs on every push and pull request:
+
+- `ci.yml`: lint (ruff), tests with coverage, Airflow DAG import, and build of
+  both Docker images.
+- `deploy-demo.yml`: after CI passes on `main`, pushes the dashboard to a
+  [Hugging Face Space](https://huggingface.co/docs/hub/spaces-sdks-docker)
+  (free CPU tier, 16 GB RAM). It also runs daily to rebuild the Space with
+  fresh ONS data.
+
+The demo image (`deploy/huggingface/Dockerfile`) does not use Airflow: it runs
+`python -m src.ingestion --write` at build time and serves the dashboard with
+gunicorn. To enable the deploy, once:
+
+1. Create a Hugging Face account and a token with write access at
+   <https://huggingface.co/settings/tokens>.
+2. In the GitHub repository, open Settings > Secrets and variables > Actions.
+   Add the secret `HF_TOKEN` (the token) and the variable `HF_SPACE`
+   (`<hf-user>/reservoir-watch`).
+3. Run the "Deploy demo" workflow, or push to `main`. The Space is created on
+   the first run. The first build takes about 5 minutes.
+
+Free Spaces sleep after 48 hours without visits and wake up on the next visit.
 
 ## Configuration
 
