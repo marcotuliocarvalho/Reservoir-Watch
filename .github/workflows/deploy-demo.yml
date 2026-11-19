@@ -1,0 +1,85 @@
+name: Deploy demo
+
+# Publishes the dashboard to a Hugging Face Space (Docker SDK, free tier).
+# Setup (once):
+#   1. Create a write token at https://huggingface.co/settings/tokens
+#   2. GitHub repo > Settings > Secrets and variables > Actions:
+#      secret HF_TOKEN = the token, variable HF_SPACE = <hf-user>/reservoir-watch
+# The Space is created on the first run.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: "0 9 * * *" # daily, after ONS publishes the previous day
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-demo
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Push to Hugging Face Space
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_SPACE: ${{ vars.HF_SPACE }}
+    steps:
+      - name: Check configuration
+        id: config
+        run: |
+          if [ -z "$HF_TOKEN" ] || [ -z "$HF_SPACE" ]; then
+            echo "::notice::HF_TOKEN or HF_SPACE not set. Skipping the demo deploy."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.config.outputs.enabled == 'true'
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-python@v5
+        if: steps.config.outputs.enabled == 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Assemble Space files
+        if: steps.config.outputs.enabled == 'true'
+        run: |
+          mkdir space
+          cp -r src requirements.txt space/
+          cp deploy/huggingface/Dockerfile deploy/huggingface/README.md space/
+          find space -name '__pycache__' -prune -exec rm -rf {} +
+          rm -f space/src/visualization/static/reservatorios.parquet
+
+      - name: Upload and rebuild
+        if: steps.config.outputs.enabled == 'true'
+        run: |
+          pip install huggingface_hub
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          space = os.environ["HF_SPACE"]
+          api.create_repo(space, repo_type="space", space_sdk="docker", exist_ok=True)
+          api.upload_folder(
+              repo_id=space,
+              repo_type="space",
+              folder_path="space",
+              delete_patterns="*",
+              commit_message=f"Deploy {os.environ['GITHUB_SHA'][:7]}",
+          )
+          # A commit with new files rebuilds the Space. Scheduled and manual
+          # runs usually change nothing, so force a clean rebuild to fetch
+          # fresh ONS data.
+          if os.environ["GITHUB_EVENT_NAME"] in ("schedule", "workflow_dispatch"):
+              api.restart_space(space, factory_reboot=True)
+          print(f"https://huggingface.co/spaces/{space}")
+          PY
