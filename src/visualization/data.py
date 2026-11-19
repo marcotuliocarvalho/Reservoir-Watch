@@ -69,10 +69,9 @@ def resolve_sources(source: str | Path | None = None) -> list[str]:
     """Return the Parquet files to read.
 
     ``source`` can be one file, a directory or a glob pattern. Without it, the
-    ``HIDRIC_DATA_DIR`` environment variable is used, then ``./data`` and, at
-    last, the sample ``arquivo.parquet``.
+    ``HIDRIC_DATA_DIR`` environment variable is used, then ``./data``.
     """
-    candidates = [source] if source else [os.getenv("HIDRIC_DATA_DIR"), "data", "arquivo.parquet"]
+    candidates = [source] if source else [os.getenv("HIDRIC_DATA_DIR"), "data"]
 
     for candidate in candidates:
         if not candidate:

@@ -1,7 +1,7 @@
 """Run with: python -m src.visualization [--source PATH] [--port 8050] [--debug]
 
 PATH can be a Parquet file, a directory or a glob pattern. Without it, the
-dashboard reads HIDRIC_DATA_DIR, then ./data, then ./arquivo.parquet.
+dashboard reads HIDRIC_DATA_DIR, then ./data.
 """
 
 import argparse
