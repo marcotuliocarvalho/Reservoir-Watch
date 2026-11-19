@@ -5,6 +5,11 @@
 **Live demo:** <https://reservoir-watch.onrender.com> (data since 2020; the
 free server sleeps when idle, so the first visit can take about a minute).
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/demo-dark.gif">
+  <img alt="Reservoir Watch dashboard demo" src="docs/demo-light.gif">
+</picture>
+
 Ingestion pipeline and interactive dashboard for the reservoirs of Brazil's
 National Interconnected System (SIN), built on open data from
 [ONS](https://dados.ons.org.br) (Operador Nacional do Sistema Elétrico).
