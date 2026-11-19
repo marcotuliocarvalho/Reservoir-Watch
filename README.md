@@ -27,9 +27,17 @@ ONS CKAN API ──> discover ──> download (1 task per year) ──> clean +
 | `src/ingestion/pipeline.py` | Plain pipeline functions and the Airflow DAG factory |
 | `dags/hidrico_ingestion.py` | Airflow entry point |
 | `src/visualization/` | Dash app: data prep, charts, layout, callbacks, theme |
+| `Dockerfile` | Airflow image |
+| `Dockerfile.dashboard` | Dashboard image (bundles the reservoir registry) |
+| `docker-compose.yaml` | Full stack: `airflow` and `dashboard` services |
 
 ## Dashboard features
 
+- Single-screen layout on desktop (window at least 1100×600 px): filters in a
+  left sidebar, KPIs on top and a 3×2 grid with the map, trend, alerts,
+  reservoir in focus, flows / lowest levels / table (tabs) and analysis by area.
+  Long lists scroll inside their card. Smaller screens fall back to one
+  scrolling column.
 - Filters by period, region, subsystem, REE, basin, reservoir type, status and current value range.
 - Two metrics: **useful volume** (% of maximum useful volume) and **normalized level**.
 - Map colored by area or by mean value, with reservoir markers by status. Click an area to filter and zoom.
@@ -49,7 +57,7 @@ ONS CKAN API ──> discover ──> download (1 task per year) ──> clean +
 ## Requirements
 
 - Python 3.12+
-- Docker and Docker Compose (only for Airflow)
+- Docker and Docker Compose (to run the full stack)
 
 ## Setup
 
@@ -70,16 +78,29 @@ curl -o src/visualization/static/reservatorios.parquet \
 
 Without this file the dashboard still runs, but the map and the region data stay empty.
 
-## Running the ingestion
-
-### With Airflow (recommended)
+## Running with Docker (recommended)
 
 ```bash
+cp .env.example .env
 mkdir -p data
 docker compose up --build
 ```
 
-Open http://localhost:8080. The `hidrico_ingestion` DAG runs daily and writes:
+This starts the full stack:
+
+- Airflow: http://localhost:8080
+- Dashboard: http://localhost:8050
+
+The dashboard image downloads the reservoir registry at build time. The
+dashboard waits until the first DAG run writes the processed dataset, then
+starts. It loads the data once, so restart it to see new runs:
+`docker compose restart dashboard`.
+
+## Running the ingestion
+
+### With Airflow
+
+Run `docker compose up --build` as above. The `hidrico_ingestion` DAG runs daily and writes:
 
 - `data/raw/DADOS_HIDROLOGICOS_RES_<year>.parquet`: raw yearly files. Closed years are downloaded only once; the current year is refreshed on every run.
 - `data/reservatorios_hidrologicos.parquet`: the processed dataset.
