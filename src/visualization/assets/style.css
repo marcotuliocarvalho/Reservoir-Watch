@@ -138,7 +138,7 @@ h1, h2, h3, p { margin: 0; }
 
 .graph-wrap { height: 360px; }
 .graph-map { height: 480px; }
-.graph-ranking { height: auto; }
+.graph-ranking, .graph-ranking-top { height: auto; }
 
 .card {
   background: var(--surface);
@@ -395,7 +395,7 @@ h1, h2, h3, p { margin: 0; }
   .area-tiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); align-content: start; padding: 2px; }
   .area-tile { padding: 12px; }
   .tile-value { font-size: 22px; }
-  .tab-scroll > .graph-ranking { flex: none; height: auto; }
+  .tab-scroll > .graph-ranking, .tab-scroll > .graph-ranking-top { flex: none; height: auto; }
 }
 
 @media (min-width: 1100px) and (max-width: 1400px) and (min-height: 600px) {

@@ -245,15 +245,21 @@ def flows_timeseries(flows: pl.DataFrame, theme: str | None) -> go.Figure:
 
 def reservoir_ranking(
     latest: pl.DataFrame, group: str, focus: str | None, theme: str | None, limit: int = 15,
+    highest: bool = False,
 ) -> go.Figure:
-    """Reservoirs with the lowest current value, colored by area. Click a bar to focus it."""
+    """Reservoirs with the lowest (or ``highest``) current value, colored by area.
+
+    The most extreme reservoir is drawn at the top. Click a bar to focus it.
+    """
     if latest.is_empty():
         return empty_figure(theme)
 
     t = tokens(theme)
     column = GROUPS[group]["column"]
     order = GROUPS[group]["order"]
-    rows = latest.head(limit).reverse().with_columns(pl.col(column).fill_null("No location").alias("_area"))
+    # ``latest`` is sorted ascending and Plotly draws the first category at the bottom.
+    rows = latest.tail(limit) if highest else latest.head(limit).reverse()
+    rows = rows.with_columns(pl.col(column).fill_null("No location").alias("_area"))
     fig = go.Figure()
 
     for area in [*order, "No location"]:
@@ -278,7 +284,7 @@ def reservoir_ranking(
         ))
 
     fig.update_layout(
-        **base_layout(theme, margin={"l": 8, "r": 40, "t": 32, "b": 8}),
+        **base_layout(theme, margin={"l": 8, "r": 56, "t": 32, "b": 8}),
         bargap=0.35, barmode="overlay", height=max(320, 26 * rows.height + 60),
     )
     fig.update_yaxes(

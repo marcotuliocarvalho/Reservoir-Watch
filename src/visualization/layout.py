@@ -266,22 +266,26 @@ def build_layout(df: pl.DataFrame) -> html.Div:
         dcc.Tabs(
             [
                 dcc.Tab(
-                    html.Div([html.P("Daily sum over the selected reservoirs", className="card-subtitle"), _graph("flows")], className="tab-body"),
-                    label="Flows", value="flows", className="tab", selected_className="tab-selected",
+                    html.Div([html.P("15 storage reservoirs with the highest value at the last reading", className="card-subtitle"), _graph("ranking-top")], className="tab-body tab-scroll"),
+                    label="Highest levels", value="ranking-top", className="tab", selected_className="tab-selected",
                 ),
                 dcc.Tab(
                     html.Div([html.P("15 reservoirs with the lowest value at the last reading", className="card-subtitle"), _graph("ranking")], className="tab-body tab-scroll"),
                     label="Lowest levels", value="ranking", className="tab", selected_className="tab-selected",
                 ),
                 dcc.Tab(
+                    html.Div([html.P("Daily sum over the selected reservoirs", className="card-subtitle"), _graph("flows")], className="tab-body"),
+                    label="Flows", value="flows", className="tab", selected_className="tab-selected",
+                ),
+                dcc.Tab(
                     html.Div([html.P("Last reading of each reservoir", className="card-subtitle"), table], className="tab-body tab-scroll card-table"),
                     label="Table", value="table", className="tab", selected_className="tab-selected",
                 ),
             ],
-            value="flows", className="tabs", content_className="tabs-content", parent_className="tabs-root",
+            value="ranking-top", className="tabs", content_className="tabs-content", parent_className="tabs-root",
         ),
         className="card card-details",
-        **{"aria-label": "Flows, lowest levels and table"},
+        **{"aria-label": "Highest and lowest levels, flows and table"},
     )
 
     return html.Div(

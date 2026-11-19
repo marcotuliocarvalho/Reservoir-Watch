@@ -21,6 +21,7 @@ from .data import (
     latest_by_reservoir,
     options,
     reservoir_history,
+    storage_reservoirs,
     summarize,
 )
 from .layout import status_badge
@@ -255,6 +256,7 @@ def register_callbacks(app: Dash, df: pl.DataFrame) -> None:
         Output("map", "figure"),
         Output("timeseries", "figure"),
         Output("flows", "figure"),
+        Output("ranking-top", "figure"),
         Output("ranking", "figure"),
         Output("table", "data"),
         Output("alert-counts", "children"),
@@ -326,6 +328,7 @@ def register_callbacks(app: Dash, df: pl.DataFrame) -> None:
             charts.brazil_map(area_summary, area_latest, group, map_color, selected, bool(map_points), metric, theme),
             charts.group_timeseries(daily_by_group(data, metric, group), group, theme),
             charts.flows_timeseries(daily_flows(data), theme),
+            charts.reservoir_ranking(storage_reservoirs(latest), group, focus, theme, highest=True),
             charts.reservoir_ranking(latest, group, focus, theme),
             table,
             _alert_counts(latest),
@@ -337,18 +340,20 @@ def register_callbacks(app: Dash, df: pl.DataFrame) -> None:
 
     @app.callback(
         Output("focus-reservoir", "value", allow_duplicate=True),
+        Input("ranking-top", "clickData"),
         Input("ranking", "clickData"),
         Input("map", "clickData"),
         Input({"type": "alert-item", "index": ALL}, "n_clicks"),
         prevent_initial_call=True,
     )
-    def focus_from_click(ranking_click, map_click, _alerts):
+    def focus_from_click(top_click, ranking_click, map_click, _alerts):
         trigger = ctx.triggered_id
         if isinstance(trigger, dict):
             return trigger["index"] if ctx.triggered and ctx.triggered[0]["value"] else no_update
-        if trigger not in ("ranking", "map"):
+        clicks = {"ranking-top": top_click, "ranking": ranking_click, "map": map_click}
+        if trigger not in clicks:
             return no_update
-        click = ranking_click if trigger == "ranking" else map_click
+        click = clicks[trigger]
         point = (click or {}).get("points", [{}])[0]
         if point.get("location"):  # a state, not a reservoir marker
             return no_update

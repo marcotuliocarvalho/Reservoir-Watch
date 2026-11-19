@@ -43,11 +43,16 @@ ONS CKAN API ──> discover ──> download (1 task per year) ──> clean +
 
 - Single-screen layout on desktop (window at least 1100×600 px): filters in a
   left sidebar, KPIs on top and a 3×2 grid with the map, trend, alerts,
-  reservoir in focus, flows / lowest levels / table (tabs) and analysis by area.
+  reservoir in focus, highest levels / lowest levels / flows / table (tabs) and
+  analysis by area.
   Long lists scroll inside their card. Smaller screens fall back to one
   scrolling column.
 - Filters by period, region, subsystem, REE, basin, reservoir type, status and current value range.
 - Two metrics: **useful volume** (% of maximum useful volume) and **normalized level**.
+- Rankings of the 15 fullest storage reservoirs and the 15 lowest reservoirs at
+  the last reading (the fullest tab opens first; run-of-river plants are left
+  out of it because they always sit near 100%). Click a bar to focus that
+  reservoir.
 - Map colored by area or by mean value, with reservoir markers by status. Click an area to filter and zoom.
 - Criticality status for storage reservoirs (types RCU, RES, RBB), always by useful volume:
 

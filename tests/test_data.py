@@ -212,3 +212,17 @@ def test_export_and_reload_prepared_dataset(raw_frame, registry_file, tmp_path, 
 
     assert reloaded.sort("id_reservatorio", "data").equals(expected.sort("id_reservatorio", "data"))
     assert reloaded["uf"].null_count() < reloaded.height
+
+
+def test_storage_reservoirs_drops_run_of_river(dashboard_df):
+    latest = data.latest_by_reservoir(dashboard_df, "nivel_norm")
+    storage = data.storage_reservoirs(latest)
+
+    assert "Itaipu" in latest["reservatorio"].to_list()
+    assert "Itaipu" not in storage["reservatorio"].to_list()
+    assert set(storage["tipo"]) <= set(data.STORAGE_TYPES)
+    assert storage["valor"].is_sorted()
+
+
+def test_storage_reservoirs_empty():
+    assert data.storage_reservoirs(data.latest_by_reservoir(pl.DataFrame(), "volume_util")).is_empty()

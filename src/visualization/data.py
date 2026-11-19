@@ -363,6 +363,17 @@ def latest_by_reservoir(df: pl.DataFrame, metric: str) -> pl.DataFrame:
     return result.with_columns(_status_expr()).drop_nulls("valor").sort("valor")
 
 
+def storage_reservoirs(latest: pl.DataFrame) -> pl.DataFrame:
+    """Only storage reservoirs (types in ``STORAGE_TYPES``), keeping the order.
+
+    Run-of-river plants hold no stock, so they sit near 100% and would crowd
+    out the reservoirs that really are full.
+    """
+    if latest.is_empty():
+        return latest
+    return latest.filter(pl.col("tipo").is_in(STORAGE_TYPES))
+
+
 def alerts(latest: pl.DataFrame) -> pl.DataFrame:
     """Reservoirs that hit a criticality trigger, most severe first."""
     if latest.is_empty():
