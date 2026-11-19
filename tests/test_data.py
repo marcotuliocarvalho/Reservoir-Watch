@@ -181,3 +181,17 @@ def test_options_order_and_type_labels(dashboard_df):
 
     types = {o["value"]: o["label"] for o in data.options(dashboard_df, "tipo")}
     assert types["FIO"] == "FIO · Run-of-river"
+
+
+def test_export_and_reload_prepared_dataset(raw_frame, registry_file, tmp_path, monkeypatch):
+    source = tmp_path / "raw.parquet"
+    raw_frame.write_parquet(source)
+    output = data.export_dataset(tmp_path / "out" / "dashboard.parquet", source, registry_file)
+    expected = data.load_dataset(source, registry_file)
+
+    # The prepared file loads as is: no pipeline, no registry needed.
+    monkeypatch.setattr(data, "prepare", lambda _: pytest.fail("prepared file processed again"))
+    reloaded = data.load_dataset(output, tmp_path / "missing.parquet")
+
+    assert reloaded.sort("id_reservatorio", "data").equals(expected.sort("id_reservatorio", "data"))
+    assert reloaded["uf"].null_count() < reloaded.height

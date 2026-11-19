@@ -190,11 +190,30 @@ def prepare(data: pl.LazyFrame) -> pl.LazyFrame:
     )
 
 
+# Columns of a dataset written by ``export_dataset``: already prepared and
+# joined with the registry, so it loads without the heavy steps.
+PREPARED_MARKER = {"volume_util", "regiao"}
+
+
 def load_dataset(source: str | Path | None = None, registry: str | Path | None = None) -> pl.DataFrame:
     """Read, prepare and collect the dashboard dataset."""
-    files = resolve_sources(source)
-    data = prepare(reader.scan_parquets(files)).collect().sort("data")
+    scan = reader.scan_parquets(resolve_sources(source))
+    if PREPARED_MARKER <= set(scan.collect_schema().names()):
+        return scan.collect().sort("data")
+    data = prepare(scan).collect().sort("data")
     return attach_registry(data, load_registry(registry))
+
+
+def export_dataset(output: str | Path, source: str | Path | None = None, registry: str | Path | None = None) -> Path:
+    """Write the dashboard dataset, prepared and joined with the registry.
+
+    Loading this file skips the pipeline and the registry join, which keeps
+    the memory peak low on small servers (the online demo).
+    """
+    output = Path(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    load_dataset(source, registry).write_parquet(output)
+    return output
 
 
 # ---------- Filters ----------

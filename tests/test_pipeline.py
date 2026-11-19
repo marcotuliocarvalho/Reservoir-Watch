@@ -108,3 +108,17 @@ def test_dag_structure():
     dag = pipeline.build_dag()
     assert dag.dag_id == pipeline.DAG_ID
     assert set(dag.task_ids) == {"discover", "download", "transform_and_save"}
+
+
+def test_cli_since_selects_years_up_to_now(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(cli, "run_ingestion", lambda config: seen.setdefault("years", config.years) and pl.LazyFrame())
+
+    cli.main(["--since", "2023"])
+
+    assert seen["years"] == tuple(range(2023, date.today().year + 1))
+
+
+def test_cli_rejects_since_with_years():
+    with pytest.raises(SystemExit):
+        cli.main(["--since", "2023", "2024"])
