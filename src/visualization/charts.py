@@ -137,9 +137,10 @@ def brazil_map(
             fig.add_trace(go.Scattergeo(
                 lat=part["lat"], lon=part["lon"], mode="markers", name=status,
                 marker={
-                    "size": [7 + min(14, math.sqrt(c) / 6) for c in capacity],
+                    # 4 to 10 px, growing with useful capacity: dense basins stay readable.
+                    "size": [4 + min(6, math.sqrt(c) / 12) for c in capacity],
                     "color": STATUS_COLORS[status],
-                    "line": {"color": t["surface"], "width": 1.5},
+                    "line": {"color": t["surface"], "width": 0.8},
                     "opacity": 0.95,
                 },
                 customdata=[
