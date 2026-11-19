@@ -1,0 +1,4 @@
+# Extra packages for the Airflow image (the dashboard uses requirements.txt).
+polars
+requests
+python-dotenv
